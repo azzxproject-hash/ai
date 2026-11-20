@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SYNTAX GPT</title>
+  <style>
+    :root {
+      --bg-base: #121212;
+      --surface: #1e1e1e;
+      --surface-alt: #2a2a2a;
+      --text: #f1f1f1;
+      --muted: #9e9e9e;
+      --border: rgba(255, 255, 255, 0.11);
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --user-bubble: #333333;
+      --user-text: #f5f5f5;
+      --ai-bubble: #1f1f1f;
+      --ai-text: #ececec;
+      --error: #f87171;
+      --code-bg: #0d0d0d;
+      --code-header: #181818;
+      --code-text: #e5e5e5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header {
+      position: relative;
+      z-index: 2;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .brand-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 14px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 2px 10px rgba(59, 130, 246, 0.25);
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: var(--text);
+    }
+
+    .btn-clear {
+      background: var(--surface-alt);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 7px 13px;
+      border-radius: 18px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-clear:hover {
+      background: #363636;
+    }
+
+    .chat-container {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 14px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 860px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .message {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      line-height: 1.5;
+      font-size: 14.5px;
+      word-wrap: break-word;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: var(--user-bubble);
+      color: var(--user-text);
+      border-top-right-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      white-space: pre-wrap;
+    }
+
+    .message.ai {
+      align-self: flex-start;
+      background: var(--ai-bubble);
+      color: var(--ai-text);
+      border-top-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .message.error {
+      background: #2b1618;
+      color: var(--error);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+    }
+
+    .msg-text {
+      white-space: pre-wrap;
+    }
+
+    .truncated-note {
+      font-size: 11.5px;
+      color: #fbbf24;
+      font-style: italic;
+    }
+
+    .code-block {
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      width: 100%;
+    }
+
+    .code-header {
+      background: var(--code-header);
+      padding: 6px 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+
+    .code-lang {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #93c5fd;
+    }
+
+    .btn-copy {
+      background: var(--surface-alt);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-copy:hover {
+      background: #3a3a3a;
+    }
+
+    .btn-copy.copied {
+      background: #22c55e;
+      border-color: #22c55e;
+      color: #0d0d0d;
+    }
+
+    .code-block pre {
+      padding: 11px 13px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12.8px;
+      line-height: 1.48;
+      margin: 0;
+      white-space: pre;
+    }
+
+    .message img.chat-img {
+      max-width: 250px;
+      max-height: 250px;
+      width: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+      cursor: zoom-in;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .message img.chat-img:hover {
+      opacity: 0.94;
+      transform: scale(1.01);
+    }
+
+    .typing {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .input-wrapper {
+      position: relative;
+      z-index: 2;
+      background: rgba(24, 24, 24, 0.95);
+      border-top: 1px solid var(--border);
+      padding: 8px 10px 10px;
+    }
+
+    .input-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .preview-box {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      border-radius: 14px;
+      padding: 7px 10px;
+      width: fit-content;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .preview-box.active {
+      display: flex;
+    }
+
+    .preview-box img {
+      width: 52px;
+      height: 52px;
+      object-fit: cover;
+      border-radius: 8px;
+      cursor: zoom-in;
+    }
+
+    .preview-info {
+      font-size: 12px;
+      color: var(--muted);
+      max-width: 170px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .btn-remove-img {
+      background: rgba(248, 113, 113, 0.18);
+      color: var(--error);
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .input-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-pill {
+      flex: 1;
+      min-width: 0;
+      background: #232323;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 24px;
+      padding: 2px 6px 2px 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .input-pill:focus-within {
+      background: #272727;
+      border-color: rgba(59, 130, 246, 0.65);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+    }
+
+    .btn-attach {
+      background: rgba(255, 255, 255, 0.06);
+      color: #e5e5e5;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      height: 38px;
+      width: 38px;
+      border-radius: 999px;
+      font-size: 17px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .btn-attach:hover {
+      background: rgba(59, 130, 246, 0.18);
+      border-color: rgba(59, 130, 246, 0.45);
+      transform: scale(1.04);
+    }
+
+    textarea {
+      flex: 1;
+      min-width: 0;
+      resize: none;
+      height: 42px;
+      min-height: 42px;
+      max-height: 140px;
+      padding: 11px 8px;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14.5px;
+      line-height: 20px;
+      outline: none;
+      overflow-y: auto;
+    }
+
+    .btn-send {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #ffffff;
+      border: 1px solid rgba(147, 197, 253, 0.35);
+      width: 46px;
+      height: 46px;
+      border-radius: 999px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.38);
+      transition: background 0.15s ease, opacity 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+    }
+
+    .btn-send:hover:not(:disabled) {
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      box-shadow: 0 6px 18px rgba(59, 130, 246, 0.48);
+      transform: scale(1.04);
+    }
+
+    .btn-send:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    .btn-send:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 10, 0.94);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 999;
+    }
+
+    .lightbox.active {
+      display: flex;
+    }
+
+    .lightbox img {
+      max-width: 100%;
+      max-height: 88dvh;
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+      object-fit: contain;
+    }
+
+    .lightbox-close {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    @media (max-width: 600px) {
+      .message {
+        max-width: 90%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <div class="brand-badge">SG</div>
+      <div class="brand-title">SYNTAX GPT</div>
+    </div>
+    <button type="button" class="btn-clear" id="clearBtn">Hapus Chat</button>
+  </header>
+
+  <main class="chat-container" id="chatContainer"></main>
+
+  <div class="input-wrapper">
+    <div class="input-inner">
+      <div class="preview-box" id="previewBox">
+        <img id="previewImg" alt="Preview foto" />
+        <span class="preview-info" id="previewName"></span>
+        <button type="button" class="btn-remove-img" id="removeImgBtn" title="Hapus foto">×</button>
+      </div>
+
+      <form class="input-form" id="chatForm">
+        <div class="input-pill">
+          <input type="file" id="imageInput" accept="image/*" hidden />
+          <textarea
+            id="promptInput"
+            rows="1"
+            placeholder=""
+          ></textarea>
+          <button type="button" class="btn-attach" id="attachBtn" title="Kirim foto">📷</button>
+        </div>
+        <button type="submit" class="btn-send" id="sendBtn" title="Kirim">➤</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="lightbox" id="lightbox">
+    <button type="button" class="lightbox-close" id="lightboxClose" title="Tutup">×</button>
+    <img id="lightboxImg" alt="Foto ukuran penuh" />
+  </div>
+
+  <script>
+    const API_KEY = "AQ.Ab8RN6Kze1uPKgOVLVLywZh2vUGdLT0k5IHefmtAC0ho3PJI2A";
+    const MODEL = "gemini-3.5-flash-lite";
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+
+    const chatContainer = document.getElementById("chatContainer");
+    const chatForm = document.getElementById("chatForm");
+    const promptInput = document.getElementById("promptInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const attachBtn = document.getElementById("attachBtn");
+    const imageInput = document.getElementById("imageInput");
+    const previewBox = document.getElementById("previewBox");
+    const previewImg = document.getElementById("previewImg");
+    const previewName = document.getElementById("previewName");
+    const removeImgBtn = document.getElementById("removeImgBtn");
+
+    const lightbox = document.getElementById("lightbox");
+    const lightboxImg = document.getElementById("lightboxImg");
+    const lightboxClose = document.getElementById("lightboxClose");
+
+    const conversationHistory = [];
+    let selectedImage = null;
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function formatPlainText(rawText) {
+      const cleaned = rawText
+        .replace(/\*\*(.*?)\*\*/gs, "$1")
+        .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+        .replace(/`([^`\n]+)`/g, "$1")
+        .replace(/\*\*/g, "");
+
+      return escapeHtml(cleaned).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    }
+
+    function parseAiSegments(rawText) {
+      const segments = [];
+      const codeRegex = /```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = codeRegex.exec(rawText)) !== null) {
+        if (match.index > lastIndex) {
+          const textPart = rawText.slice(lastIndex, match.index);
+          if (textPart.trim()) {
+            segments.push({ type: "text", content: textPart });
+          }
+        }
+
+        const lang = (match[1] || "code").trim();
+        const codeContent = match[2].replace(/\n$/, "");
+        segments.push({ type: "code", lang, content: codeContent });
+        lastIndex = codeRegex.lastIndex;
+      }
+
+      if (lastIndex < rawText.length) {
+        const remaining = rawText.slice(lastIndex);
+        if (remaining.trim()) {
+          segments.push({ type: "text", content: remaining });
+        }
+      }
+
+      if (segments.length === 0 && rawText.trim()) {
+        segments.push({ type: "text", content: rawText });
+      }
+
+      return segments;
+    }
+
+    async function copyTextToClipboard(text, btnEl) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const temp = document.createElement("textarea");
+          temp.value = text;
+          temp.style.position = "fixed";
+          temp.style.opacity = "0";
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand("copy");
+          document.body.removeChild(temp);
+        }
+
+        const originalLabel = btnEl.textContent;
+        btnEl.textContent = "Tersalin!";
+        btnEl.classList.add("copied");
+        setTimeout(() => {
+          btnEl.textContent = originalLabel;
+          btnEl.classList.remove("copied");
+        }, 1600);
+      } catch {
+        btnEl.textContent = "Gagal salin";
+        setTimeout(() => {
+          btnEl.textContent = "Salin";
+        }, 1600);
+      }
+    }
+
+    function createCodeBlockElement(lang, codeContent) {
+      const block = document.createElement("div");
+      block.className = "code-block";
+
+      const header = document.createElement("div");
+      header.className = "code-header";
+
+      const langSpan = document.createElement("span");
+      langSpan.className = "code-lang";
+      langSpan.textContent = lang || "code";
+
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "btn-copy";
+      copyBtn.textContent = "Salin";
+      copyBtn.addEventListener("click", () => copyTextToClipboard(codeContent, copyBtn));
+
+      header.appendChild(langSpan);
+      header.appendChild(copyBtn);
+
+      const pre = document.createElement("pre");
+      const code = document.createElement("code");
+      code.textContent = codeContent;
+      pre.appendChild(code);
+
+      block.appendChild(header);
+      block.appendChild(pre);
+      return block;
+    }
+
+    function openLightbox(src) {
+      if (!src) return;
+      lightboxImg.src = src;
+      lightbox.classList.add("active");
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove("active");
+      lightboxImg.src = "";
+    }
+
+    lightboxClose.addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    previewImg.addEventListener("click", () => {
+      if (previewImg.src) openLightbox(previewImg.src);
+    });
+
+    function appendMessage({ text = "", imageUrl = "", role = "ai", isError = false, truncated = false }) {
+      const div = document.createElement("div");
+      div.className = `message ${role}${isError ? " error" : ""}`;
+
+      if (imageUrl) {
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.alt = "Foto terkirim";
+        img.className = "chat-img";
+        img.title = "Tekan untuk melihat foto";
+        img.addEventListener("click", () => openLightbox(imageUrl));
+        div.appendChild(img);
+      }
+
+      if (text) {
+        if (role === "ai" && !isError) {
+          const segments = parseAiSegments(text);
+          segments.forEach((seg) => {
+            if (seg.type === "code") {
+              div.appendChild(createCodeBlockElement(seg.lang, seg.content));
+            } else {
+              const span = document.createElement("span");
+              span.className = "msg-text";
+              span.innerHTML = formatPlainText(seg.content);
+              div.appendChild(span);
+            }
+          });
+        } else {
+          const span = document.createElement("span");
+          span.className = "msg-text";
+          span.innerHTML = formatPlainText(text);
+          div.appendChild(span);
+        }
+      }
+
+      if (truncated) {
+        const note = document.createElement("span");
+        note.className = "truncated-note";
+        note.textContent = "(Jawaban terpotong batas panjang token — ketik 'lanjut' untuk melanjutkan)";
+        div.appendChild(note);
+      }
+
+      chatContainer.appendChild(div);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+      return div;
+    }
+
+    function clearSelectedImage() {
+      selectedImage = null;
+      imageInput.value = "";
+      previewImg.src = "";
+      previewName.textContent = "";
+      previewBox.classList.remove("active");
+    }
+
+    // Kompres otomatis foto di browser agar upload ke API jauh lebih cepat
+    function compressImageFile(file, maxWidth = 1024, quality = 0.78) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            let { width, height } = img;
+            if (width > maxWidth || height > maxWidth) {
+              if (width >= height) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              } else {
+                width = Math.round((width * maxWidth) / height);
+                height = maxWidth;
+              }
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const mimeType = "image/jpeg";
+            const dataUrl = canvas.toDataURL(mimeType, quality);
+            const base64Data = dataUrl.split(",")[1];
+
+            resolve({
+              mimeType,
+              base64Data,
+              dataUrl,
+              name: file.name
+            });
+          };
+          img.onerror = () => reject(new Error("Gagal memuat gambar untuk dikompres."));
+          img.src = reader.result;
+        };
+        reader.onerror = () => reject(new Error("Gagal membaca file gambar."));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    attachBtn.addEventListener("click", () => imageInput.click());
+
+    imageInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        selectedImage = await compressImageFile(file);
+        previewImg.src = selectedImage.dataUrl;
+        previewName.textContent = selectedImage.name;
+        previewBox.classList.add("active");
+      } catch (err) {
+        appendMessage({ text: err.message, role: "ai", isError: true });
+      }
+    });
+
+    removeImgBtn.addEventListener("click", clearSelectedImage);
+
+    function autoResizeTextarea() {
+      promptInput.style.height = "42px";
+      if (promptInput.value.includes("\n") || promptInput.scrollHeight > 44) {
+        promptInput.style.height = Math.min(promptInput.scrollHeight, 140) + "px";
+      }
+    }
+
+    promptInput.addEventListener("input", autoResizeTextarea);
+
+    promptInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        chatForm.requestSubmit();
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      conversationHistory.length = 0;
+      clearSelectedImage();
+      chatContainer.innerHTML = "";
+    });
+
+    // Jaga riwayat tetap ringan: foto lama di turn sebelumnya tidak dikirim ulang terus-menerus
+    function buildLightweightContents() {
+      const recent = conversationHistory.slice(-10);
+      return recent.map((turn, idx) => {
+        const isLatestUserTurn = idx === recent.length - 1 && turn.role === "user";
+        if (isLatestUserTurn) return turn;
+
+        const textOnlyParts = (turn.parts || [])
+          .filter((p) => typeof p.text === "string" && p.text.trim())
+          .map((p) => ({ text: p.text }));
+
+        if (textOnlyParts.length === 0) {
+          textOnlyParts.push({ text: "[Foto dikirim]" });
+        }
+
+        return {
+          role: turn.role,
+          parts: textOnlyParts
+        };
+      });
+    }
+
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userText = promptInput.value.trim();
+      if (!userText && !selectedImage) return;
+
+      const currentImage = selectedImage;
+      const parts = [];
+
+      if (currentImage) {
+        parts.push({
+          inlineData: {
+            mimeType: currentImage.mimeType,
+            data: currentImage.base64Data
+          }
+        });
+      }
+
+      parts.push({
+        text: userText || "Tolong lihat dan jelaskan isi foto ini secara lengkap."
+      });
+
+      appendMessage({
+        text: userText,
+        imageUrl: currentImage ? currentImage.dataUrl : "",
+        role: "user"
+      });
+
+      conversationHistory.push({
+        role: "user",
+        parts
+      });
+
+      promptInput.value = "";
+      autoResizeTextarea();
+      clearSelectedImage();
+      sendBtn.disabled = true;
+
+      const typingEl = appendMessage({ text: "SYNTAX GPT SEDANG BERFIKIR", role: "ai" });
+      typingEl.classList.add("typing");
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+        const response = await fetch(`${API_URL}?key=${encodeURIComponent(API_KEY)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{
+                text: "Kamu adalah SYNTAX GPT, asisten AI yang helpful, jelas, ramah, dan selalu memberikan jawaban lengkap serta tuntas. Untuk teks penjelasan biasa jangan pakai format Markdown seperti bintang ganda (**) atau pagar (#). Jika memberikan kode program, selalu bungkus kode tersebut di dalam blok kode markdown ```bahasa ... ``` agar terpisah dari teks biasa."
+              }]
+            },
+            generationConfig: {
+              maxOutputTokens: 4096,
+              temperature: 0.7
+            },
+            contents: buildLightweightContents()
+          })
+        });
+
+        clearTimeout(timeoutId);
+
+        const data = await response.json();
+        typingEl.remove();
+
+        if (!response.ok) {
+          throw new Error(data?.error?.message || `HTTP Error ${response.status}`);
+        }
+
+        const candidate = data?.candidates?.[0];
+        const replyText =
+          candidate?.content?.parts
+            ?.map((p) => p?.text || "")
+            .join("")
+            .trim() || "Maaf, tidak ada respons teks yang diterima.";
+
+        const isTruncated = candidate?.finishReason === "MAX_TOKENS";
+
+        conversationHistory.push({
+          role: "model",
+          parts: [{ text: replyText }]
+        });
+
+        appendMessage({ text: replyText, role: "ai", truncated: isTruncated });
+      } catch (err) {
+        typingEl.remove();
+        const msg =
+          err.name === "AbortError"
+            ? "Waktu tunggu habis (timeout) saat memproses foto/pesan. Coba kirim ulang."
+            : `Gagal menghubungi API: ${err.message}`;
+        appendMessage({ text: msg, role: "ai", isError: true });
+      } finally {
+        sendBtn.disabled = false;
+        promptInput.focus();
+      }
+    });
+  </script>
+</body>
+</html>
